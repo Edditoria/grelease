@@ -5,7 +5,14 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
+)
+
+// Constants defined by Github API.
+const (
+	ReleasesPerPageDefault int = 30
+	ReleasesPerPageMax     int = 100
 )
 
 // Get what we need only.
@@ -33,16 +40,26 @@ type ReleaseAsset struct {
 	Size int    `json:"size"`
 }
 
-// Fetch from Github. **Append** results to current `repo.Releases`.
-func (repo *Repo) FetchReleasesOnce(perPage, page int) error {
+func (repo *Repo) ReleasesUrl(perPage, page int) (*url.URL, error) {
 	rUrl := "https://api.github.com/repos/" + repo.Owner + "/" + repo.Name +
 		"/releases?per_page=" + strconv.Itoa(perPage) + "&page=" + strconv.Itoa(page)
-	resp, err := http.Get(rUrl)
+	return url.Parse(rUrl)
+}
+
+// Fetch from Github. **Append** results to current `repo.Releases`.
+// It fetches 100 releases per page instead of 30 that is default in Github API.
+func (repo *Repo) FetchReleasesOnce(page int) error {
+	rUrl, err := repo.ReleasesUrl(ReleasesPerPageMax, page)
+	if err != nil {
+		return err
+	}
+	rUrlStr := rUrl.String()
+	resp, err := http.Get(rUrlStr)
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(resp.Status + " from " + rUrl)
+		return errors.New(resp.Status + " from " + rUrlStr)
 	}
 	defer resp.Body.Close()
 	bodyByte, err := io.ReadAll(resp.Body)
