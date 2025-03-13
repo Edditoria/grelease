@@ -7,10 +7,16 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 // Constants defined by Github API.
 const (
+	ApiVersion string = "2022-11-28"
+	ApiTimeout time.Duration = 10 * time.Second
+	HeaderAcceptGithubJson string = "application/vnd.github+json"
+	HeaderApiVersionKey string = "X-GitHub-Api-Version"
+
 	ReleasesPerPageDefault int = 30
 	ReleasesPerPageMax     int = 100
 )
@@ -54,7 +60,16 @@ func (repo *Repo) FetchReleasesOnce(page int) error {
 		return err
 	}
 	rUrlStr := rUrl.String()
-	resp, err := http.Get(rUrlStr)
+	req, err := http.NewRequest(http.MethodGet, rUrlStr, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Accept", HeaderAcceptGithubJson)
+	req.Header.Add(HeaderApiVersionKey, ApiVersion)
+	client := http.Client{
+		Timeout: ApiTimeout,
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
