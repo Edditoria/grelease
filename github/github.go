@@ -47,6 +47,13 @@ type ReleaseAsset struct {
 }
 
 func (repo *Repo) ReleasesUrl(perPage, page int) (*url.URL, error) {
+	if perPage < 1 || perPage > ReleasesPerPageMax {
+		msg := "perPage must be between 1 and " + strconv.Itoa(ReleasesPerPageMax)
+		return nil, errors.New(msg)
+	}
+	if page < 1 {
+		return nil, errors.New("page must be larger than 0")
+	}
 	rUrl := "https://api.github.com/repos/" + repo.Owner + "/" + repo.Name +
 		"/releases?per_page=" + strconv.Itoa(perPage) + "&page=" + strconv.Itoa(page)
 	return url.Parse(rUrl)
