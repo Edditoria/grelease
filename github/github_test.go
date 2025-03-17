@@ -20,14 +20,14 @@ func TestReleasesUrl(t *testing.T) {
 	}
 }
 
-func TestFetchReleasesOnce(t *testing.T) {
+func TestListReleases(t *testing.T) {
 	hugo := Repo{Owner: "gohugoio", Name: "hugo"}
-	err := hugo.FetchReleasesOnce(1)
+	releases, _, err := hugo.ListReleases(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := 100
-	rLen := len(hugo.Releases)
+	rLen := len(releases)
 	if rLen != want {
 		t.Fatalf("len(hugo.Releases) wants %d but got %d", want, rLen)
 	}

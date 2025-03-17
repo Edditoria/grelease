@@ -59,17 +59,19 @@ func (repo *Repo) ReleasesUrl(perPage, page int) (*url.URL, error) {
 	return url.Parse(rUrl)
 }
 
-// Fetch from Github. **Append** results to current `repo.Releases`.
-// It fetches 100 releases per page instead of 30 that is default in Github API.
-func (repo *Repo) FetchReleasesOnce(page int) error {
+// List releases for a selected page. To fetch all releases, please do [Repo.ReloadReleases].
+//
+// It fetches 100 releases per page, instead of 30 that is default in Github API.
+// The returned response pointer may be useful for [GetMaxPage] and debug.
+func (repo *Repo) ListReleases(page int) ([]*Release, *http.Response, error) {
 	rUrl, err := repo.ReleasesUrl(ReleasesPerPageMax, page)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	rUrlStr := rUrl.String()
 	req, err := http.NewRequest(http.MethodGet, rUrlStr, nil)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	req.Header.Add("Accept", HeaderAcceptGithubJson)
 	req.Header.Add(HeaderApiVersionKey, ApiVersion)
@@ -78,20 +80,19 @@ func (repo *Repo) FetchReleasesOnce(page int) error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(resp.Status + " from " + rUrlStr)
+		return nil, nil, errors.New(resp.Status + " from " + rUrlStr)
 	}
 	defer resp.Body.Close()
 	bodyByte, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	var releases []*Release
 	if err := json.Unmarshal(bodyByte, &releases); err != nil {
-		return err
+		return nil, nil, err
 	}
-	repo.Releases = append(repo.Releases, releases...)
-	return nil
+	return releases, resp, nil
 }
