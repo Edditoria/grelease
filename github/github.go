@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -95,4 +96,31 @@ func (repo *Repo) ListReleases(page int) ([]*Release, *http.Response, error) {
 		return nil, nil, err
 	}
 	return releases, resp, nil
+}
+
+// Get information of maximum page from Github response.
+// If this function cannot find it, it returns 0.
+//
+// Basically this function parse the "link" field in the HTTP header.
+// And search for URL with `rel="last"`.
+//
+// See: https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api
+func GetMaxPage(header *http.Header) int {
+	linkStr := header.Get("link")
+	if linkStr == "" {
+		// fmt.Println("GetMaxPage(): linkStr is empty")
+		return 0
+	}
+	// We want: `<https://...?page=[X]>; rel="last"`
+	parts := strings.SplitN(linkStr, `rel="last`, 2) // without tailing `"`.
+	startIdx := 5 + strings.LastIndex(parts[0], "page=")
+	endIdx := strings.LastIndex(parts[0], ">")
+	if startIdx < 0 || endIdx < 0 {
+		return 0
+	}
+	ans, err := strconv.Atoi(parts[0][startIdx:endIdx])
+	if err != nil {
+		return 0
+	}
+	return ans
 }
