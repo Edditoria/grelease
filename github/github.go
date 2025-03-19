@@ -60,7 +60,30 @@ func (repo *Repo) ReleasesUrl(perPage, page int) (*url.URL, error) {
 	return url.Parse(rUrl)
 }
 
-// List releases for a selected page. To fetch all releases, please do [Repo.ReloadReleases].
+// Fetch all releases from Github. If all success, replace the old [Repo].Releases.
+// NOTE: Multiple API calls will occur. Each call (per page) will fetch 100 releases.
+func (repo *Repo) UpdateReleases() error {
+	releases, resp, err := repo.ListReleases(1)
+	if err != nil {
+		return err
+	}
+	maxPage := GetMaxPage(&resp.Header)
+	if maxPage < 2 {
+		repo.Releases = releases
+		return nil
+	}
+	for i := 2; i <= maxPage; i++ {
+		newReleases, _, err := repo.ListReleases(i)
+		if err != nil {
+			return err
+		}
+		releases = append(releases, newReleases...)
+	}
+	repo.Releases = releases
+	return nil
+}
+
+// List releases for a selected page. To fetch all releases, please do [Repo.UpdateReleases].
 //
 // It fetches 100 releases per page, instead of 30 that is default in Github API.
 // The returned response pointer may be useful for [GetMaxPage] and debug.

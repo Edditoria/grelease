@@ -69,3 +69,16 @@ func TestGetMaxPage(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateReleases(t *testing.T) {
+	repo := Repo{Owner: "gohugoio", Name: "hugo"}
+	err := repo.UpdateReleases()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := 316
+	got := len(repo.Releases)
+	if got < want {
+		t.Fatalf("wants at least %d releases, but got %d", want, got)
+	}
+}
