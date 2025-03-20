@@ -72,7 +72,7 @@ func TestGetMaxPage(t *testing.T) {
 
 func TestUpdateReleases(t *testing.T) {
 	repo := Repo{Owner: "gohugoio", Name: "hugo"}
-	err := repo.UpdateReleases()
+	err := repo.UpdateReleases(10)
 	if err != nil {
 		t.Fatal(err)
 	}

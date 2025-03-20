@@ -61,8 +61,9 @@ func (repo *Repo) ReleasesUrl(perPage, page int) (*url.URL, error) {
 }
 
 // Fetch all releases from Github. If all success, replace the old [Repo].Releases.
-// NOTE: Multiple API calls will occur. Each call (per page) will fetch 100 releases.
-func (repo *Repo) UpdateReleases() error {
+//
+// @param maxCall to limit API call (page), while up to 100 releases per page.
+func (repo *Repo) UpdateReleases(maxCall int) error {
 	releases, resp, err := repo.ListReleases(1)
 	if err != nil {
 		return err
@@ -71,6 +72,9 @@ func (repo *Repo) UpdateReleases() error {
 	if maxPage < 2 {
 		repo.Releases = releases
 		return nil
+	}
+	if maxCall < maxPage {
+		maxPage = maxCall
 	}
 	for i := 2; i <= maxPage; i++ {
 		newReleases, _, err := repo.ListReleases(i)
