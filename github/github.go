@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -13,10 +14,10 @@ import (
 
 // Constants defined by Github API.
 const (
-	ApiVersion string = "2022-11-28"
-	ApiTimeout time.Duration = 10 * time.Second
-	HeaderAcceptGithubJson string = "application/vnd.github+json"
-	HeaderApiVersionKey string = "X-GitHub-Api-Version"
+	ApiVersion             string        = "2022-11-28"
+	ApiTimeout             time.Duration = 10 * time.Second
+	HeaderAcceptGithubJson string        = "application/vnd.github+json"
+	HeaderApiVersionKey    string        = "X-GitHub-Api-Version"
 
 	ReleasesPerPageDefault int = 30
 	ReleasesPerPageMax     int = 100
@@ -150,4 +151,21 @@ func GetMaxPage(header *http.Header) int {
 		return 0
 	}
 	return ans
+}
+
+func (repo *Repo) WriteJson(w io.Writer, prefix, indent string) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent(prefix, indent)
+	err := enc.Encode(repo)
+	return err
+}
+
+func (repo *Repo) WriteJsonFile(filePath, prefix, indent string) error {
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0o664)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	err = repo.WriteJson(file, prefix, indent)
+	return err
 }
