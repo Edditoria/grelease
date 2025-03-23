@@ -1,3 +1,0 @@
-package grelease
-
-func main() {}
