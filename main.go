@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Edditoria/grelease/github"
@@ -10,12 +11,13 @@ import (
 
 const (
 	usageUrl      = "github.com/OWNER/REPO"
-	usageFetchCmd = "grelease fetch --repo=" + usageUrl
+	usageFetchCmd = "grelease fetch --repo=" + usageUrl + " --write=<FILE_PATH>"
 )
 
 func main() {
 	fetch := flag.NewFlagSet("fetch", flag.ExitOnError)
 	fetchRepo := fetch.String("repo", "", "URL to fetch: "+usageUrl)
+	fetchWrite := fetch.String("write", "", "file path for writing a JSON file")
 
 	if len(os.Args) < 2 {
 		os.Stderr.WriteString("Usage: " + usageFetchCmd + "\n")
@@ -25,7 +27,7 @@ func main() {
 	switch os.Args[1] {
 	case fetch.Name():
 		fetch.Parse(os.Args[2:])
-		exitCode := handleFetch(fetchRepo)
+		exitCode := handleFetch(fetchRepo, fetchWrite)
 		os.Exit(exitCode)
 	default:
 		os.Stderr.WriteString("grelease: invalid command\nUsage: " + usageFetchCmd + "\n")
@@ -33,7 +35,7 @@ func main() {
 	}
 }
 
-func handleFetch(repoFlag *string) (exitCode int) {
+func handleFetch(repoFlag, writeFlag *string) (exitCode int) {
 	exitCode = 1
 
 	splited := strings.Split(*repoFlag, "/")
@@ -53,6 +55,18 @@ func handleFetch(repoFlag *string) (exitCode int) {
 		panic(err)
 	}
 	repo.Releases = releases
+
+	absPath, err := filepath.Abs(*writeFlag)
+	if err != nil {
+		os.Stderr.WriteString(err.Error() + "\n")
+		return
+	}
+	err = repo.WriteJsonFile(absPath, "", "\t")
+	if err != nil {
+		os.Stderr.WriteString(err.Error() + "\n")
+		return
+	}
+
 	err = repo.WriteJson(os.Stdout, "", "\t")
 	if err != nil {
 		panic(err)
