@@ -26,7 +26,11 @@ func main() {
 
 	switch os.Args[1] {
 	case fetch.Name():
-		fetch.Parse(os.Args[2:])
+		err := fetch.Parse(os.Args[2:])
+		if err != nil {
+			os.Stderr.WriteString("grelease: argument error: " + err.Error() + "\n")
+			os.Exit(1)
+		}
 		exitCode := handleFetch(fetchRepo, fetchWrite)
 		os.Exit(exitCode)
 	default:
@@ -35,17 +39,19 @@ func main() {
 	}
 }
 
-func handleFetch(repoFlag, writeFlag *string) (exitCode int) {
-	exitCode = 1
-
+// Subcommand "fetch" to consume API call, then write to a file or `stdout`.
+// It also handle errors for users.
+//
+// @return int for exit code.
+func handleFetch(repoFlag, writeFlag *string) int {
 	splited := strings.Split(*repoFlag, "/")
 	if len(splited) != 3 {
 		os.Stderr.WriteString("grelease: invalid repository url\nExpect: " + usageUrl + "\n")
-		return
+		return 1
 	}
 	if splited[0] != "github.com" {
 		os.Stderr.WriteString("grelease: hostname not supported currently\nExpect: " + usageUrl + "\n")
-		return
+		return 1
 	}
 
 	repo := github.Repo{Owner: splited[1], Name: splited[2]}
@@ -56,20 +62,24 @@ func handleFetch(repoFlag, writeFlag *string) (exitCode int) {
 	}
 	repo.Releases = releases
 
+	if *writeFlag == "" {
+		err = repo.WriteJson(os.Stdout, "", "\t")
+		if err != nil {
+			os.Stderr.WriteString(err.Error() + "\n")
+			return 1
+		}
+		return 0
+	}
+
 	absPath, err := filepath.Abs(*writeFlag)
 	if err != nil {
 		os.Stderr.WriteString(err.Error() + "\n")
-		return
+		return 1
 	}
 	err = repo.WriteJsonFile(absPath, "", "\t")
 	if err != nil {
 		os.Stderr.WriteString(err.Error() + "\n")
-		return
-	}
-
-	err = repo.WriteJson(os.Stdout, "", "\t")
-	if err != nil {
-		panic(err)
+		return 1
 	}
 
 	return 0
