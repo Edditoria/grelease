@@ -10,14 +10,15 @@ import (
 )
 
 const (
-	usageUrl      = "github.com/OWNER/REPO"
-	usageFetchCmd = "grelease fetch --repo=" + usageUrl + " --write=<FILE_PATH>"
+	usageUrl       = "github.com/OWNER/REPO"
+	usageFetchCmd  = "grelease fetch [-p] " + usageUrl + " FILE_TO_WRITE"
+	usageFetchCmd0 = "grelease fetch " + usageUrl + " FILE_TO_WRITE"
+	usageFetchCmd1 = "grelease fetch -p " + usageUrl
 )
 
 func main() {
 	fetch := flag.NewFlagSet("fetch", flag.ExitOnError)
-	fetchRepo := fetch.String("repo", "", "URL to fetch: "+usageUrl)
-	fetchWrite := fetch.String("write", "", "file path for writing a JSON file")
+	fetchPrintFlag := fetch.Bool("p", false, "print to stdout (will reject FILE_TO_WRITE)")
 
 	if len(os.Args) < 2 {
 		os.Stderr.WriteString("Usage: " + usageFetchCmd + "\n")
@@ -31,10 +32,11 @@ func main() {
 			os.Stderr.WriteString("grelease: argument error: " + err.Error() + "\n")
 			os.Exit(1)
 		}
-		exitCode := handleFetch(fetchRepo, fetchWrite)
+		exitCode := handleFetch(fetch, fetchPrintFlag)
 		os.Exit(exitCode)
 	default:
-		os.Stderr.WriteString("grelease: invalid command\nUsage: " + usageFetchCmd + "\n")
+		os.Stderr.WriteString("grelease: invalid command\n")
+		os.Stderr.WriteString("Usage: " + usageFetchCmd + "\n")
 		os.Exit(1)
 	}
 }
@@ -43,16 +45,54 @@ func main() {
 // It also handle errors for users.
 //
 // @return int for exit code.
-func handleFetch(repoFlag, writeFlag *string) int {
-	splited := strings.Split(*repoFlag, "/")
+func handleFetch(fSet *flag.FlagSet, printFlag *bool) int {
+
+	// Check structure of fetch command:
+
+	args := fSet.Args()
+	if len(args) < 1 {
+		os.Stderr.WriteString("grelease: missing operand\n")
+		os.Stderr.WriteString("Usage: " + usageFetchCmd0 + "\n")
+		os.Stderr.WriteString("   or: " + usageFetchCmd1 + "\nOptions:\n")
+		fSet.PrintDefaults()
+		return 1
+	}
+	if *printFlag && len(args) > 1 {
+		os.Stderr.WriteString("grelease: command conflict with -p option\n")
+		os.Stderr.WriteString("Expect: " + usageFetchCmd1 + "\n")
+		return 1
+	}
+	if !*printFlag && len(args) != 2 {
+		os.Stderr.WriteString("grelease: invalid command\n")
+		os.Stderr.WriteString("Usage: " + usageFetchCmd0 + "\n")
+		os.Stderr.WriteString("   or: " + usageFetchCmd1 + "\nOptions:\n")
+		fSet.PrintDefaults()
+		return 1
+	}
+	if len(args) > 2 {
+		os.Stderr.WriteString("grelease: too many arguments\nExpect: " + usageFetchCmd + "\n")
+		return 1
+	}
+	argRepoUrl := args[0]
+	argFilePath := args[1]
+
+	// Check repo URL:
+
+	splited := strings.Split(argRepoUrl, "/")
 	if len(splited) != 3 {
-		os.Stderr.WriteString("grelease: invalid repository url\nExpect: " + usageUrl + "\n")
+		os.Stderr.WriteString("grelease: invalid repository url\n" +
+			"- Expect: " + usageUrl + "\n" +
+			"- Got:    " + argRepoUrl + "\n")
 		return 1
 	}
 	if splited[0] != "github.com" {
-		os.Stderr.WriteString("grelease: hostname not supported currently\nExpect: " + usageUrl + "\n")
+		os.Stderr.WriteString("grelease: hostname not supported in current version\n" +
+			"- Expect: " + usageUrl + "\n" +
+			"- Got:    " + argRepoUrl + "\n")
 		return 1
 	}
+
+	// Fetch releases:
 
 	repo := github.Repo{Owner: splited[1], Name: splited[2]}
 	// TODO: fetch all releases here:
@@ -62,7 +102,9 @@ func handleFetch(repoFlag, writeFlag *string) int {
 	}
 	repo.Releases = releases
 
-	if *writeFlag == "" {
+	// Write to stdout or file:
+
+	if *printFlag {
 		err = repo.WriteJson(os.Stdout, "", "\t")
 		if err != nil {
 			os.Stderr.WriteString(err.Error() + "\n")
@@ -70,8 +112,7 @@ func handleFetch(repoFlag, writeFlag *string) int {
 		}
 		return 0
 	}
-
-	absPath, err := filepath.Abs(*writeFlag)
+	absPath, err := filepath.Abs(argFilePath)
 	if err != nil {
 		os.Stderr.WriteString(err.Error() + "\n")
 		return 1
