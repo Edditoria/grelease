@@ -42,10 +42,12 @@ type Release struct {
 
 // Get what we need only.
 type ReleaseAsset struct {
-	Id   int    `json:"id"`
-	Url  string `json:"url"`
-	Name string `json:"name"`
-	Size int    `json:"size"`
+	Id                 int    `json:"id"`
+	BrowserDownloadUrl string `json:"browser_download_url"`
+	Name               string `json:"name"`
+	State              string `json:"state"`
+	ContentType        string `json:"content_type"`
+	Size               int    `json:"size"`
 }
 
 func (repo *Repo) ReleasesUrl(perPage, page int) (*url.URL, error) {
